@@ -9,6 +9,7 @@ pipeline {
         DOCKER_CREDENTIALS = credentials('docker-credentials')
         DOCKER_REGISTRY = 'docker.io'
         DOCKER_USERNAME = 'burbes'
+        DOCKER_PASSWORD = 'dckr_pat_KK0fyXSzEuT8a2U8GwUntTsEtKY'
         DOCKER_REPO = 'task-management-system'
         DOCKER_CONFIG = "${env.WORKSPACE}/.docker"
         // Disable macOS keychain for Docker
