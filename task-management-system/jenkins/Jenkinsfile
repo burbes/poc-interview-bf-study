@@ -11,6 +11,8 @@ pipeline {
         DOCKER_USERNAME = 'burbes'
         DOCKER_REPO = 'task-management-system'
         DOCKER_CONFIG = "${env.WORKSPACE}/.docker"
+        // Disable macOS keychain for Docker
+        DOCKER_CLI_EXPERIMENTAL = "enabled"
     }
     
     stages {
@@ -123,8 +125,12 @@ pipeline {
             // }
             steps {
                 script {
+                    // Create a directory for Docker configuration
                     def dockerConfig = "${env.WORKSPACE}/.docker"
-                    sh "mkdir -p ${dockerConfig} && echo '{\"auths\":{}, \"credsStore\": \"\"}' > ${dockerConfig}/config.json"
+                    
+                    // Create a Docker config without keychain integration
+                    sh "mkdir -p ${dockerConfig}"
+                    sh "echo '{\"auths\":{}, \"credsStore\": \"\", \"credHelpers\": {}}' > ${dockerConfig}/config.json"
                     
                     // Validate image tag before proceeding
                     if (env.IMAGE_TAG == null || env.IMAGE_TAG.trim() == '') {
@@ -135,11 +141,25 @@ pipeline {
                     
                     withCredentials([usernamePassword(credentialsId: 'docker-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
                         try {
-                            // Login to Docker Hub
-                            sh "echo \$DOCKER_PASSWORD | docker --config ${dockerConfig} login -u \$DOCKER_USERNAME --password-stdin ${env.DOCKER_REGISTRY}"
-                            echo "Successfully logged in to Docker registry"
+                            // Create auth entry directly in config.json instead of using login command
+                            def auth = sh(script: "echo -n '$DOCKER_USERNAME:$DOCKER_PASSWORD' | base64", returnStdout: true).trim()
                             
-                            // Push the image to Docker Hub
+                            // Write auth directly to config file to avoid keychain
+                            sh """
+                                echo '{
+                                  "auths": {
+                                    "${env.DOCKER_REGISTRY}": {
+                                      "auth": "${auth}"
+                                    }
+                                  },
+                                  "credsStore": "",
+                                  "credHelpers": {}
+                                }' > ${dockerConfig}/config.json
+                            """
+                            
+                            echo "Docker authentication configured without keychain"
+                            
+                            // Push the image to Docker Hub using the config file
                             sh "docker --config ${dockerConfig} push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                             echo "Successfully pushed ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                             
@@ -154,9 +174,9 @@ pipeline {
                             echo "Error during Docker push: ${e.message}"
                             error "Failed to push Docker image"
                         } finally {
-                            // Always logout for security
-                            sh "docker --config ${dockerConfig} logout ${env.DOCKER_REGISTRY} || true"
-                            echo "Logged out from Docker registry"
+                            // Clean up the Docker config file for security
+                            sh "rm -f ${dockerConfig}/config.json || true"
+                            echo "Docker credentials cleaned up"
                         }
                     }
                 }
@@ -248,8 +268,8 @@ pipeline {
     post {
         always {
             echo 'Pipeline execution completed'
-            // Ensure we're logged out of Docker for security
-            sh 'docker logout || true'
+            // Clean up any Docker config files
+            sh 'rm -rf ${WORKSPACE}/.docker || true'
             // Clean workspace
             cleanWs()
         }
