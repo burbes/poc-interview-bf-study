@@ -96,7 +96,7 @@ pipeline {
                     def imageTag = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}-${env.GIT_COMMIT.substring(0,7)}"
                     env.IMAGE_TAG = imageTag
                     env.FULL_IMAGE_NAME = "${env.DOCKER_USERNAME}/${env.DOCKER_REPO}"
-                    sh "docker build -t ${env.FULL_IMAGE_NAME}:${imageTag} -f docker/Dockerfile ."
+                    sh "docker build -t ${env.FULL_IMAGE_NAME}:${imageTag} -f task-management-system/docker/Dockerfile task-management-system"
                 }
             }
         }
