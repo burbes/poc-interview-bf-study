@@ -13,8 +13,16 @@ pipeline {
         DOCKER_CONFIG = "${env.WORKSPACE}/.docker"
         // Disable macOS keychain for Docker
         DOCKER_CLI_EXPERIMENTAL = "enabled"
+        // Explicit Docker path configuration
+        DOCKER_PATH = "/opt/homebrew/bin:/usr/local/bin"
+        // Disable credential helpers to avoid keychain issues
+        DOCKER_CONFIG_NO_HELPERS = '{"auths":{}, "credsStore": "", "credHelpers": {}}'
+        // Docker socket location - for macOS
+        DOCKER_HOST = "unix:///var/run/docker.sock"
+        // Prevent Docker from using keychain on macOS
+        DOCKER_CREDENTIAL_HELPER = "none"
         JAVA_HOME = "/opt/homebrew/opt/openjdk@21"
-        PATH = "/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
+        PATH = "/opt/homebrew/opt/openjdk@21/bin:${DOCKER_PATH}:${env.PATH}"
     }
     
     stages {
@@ -97,6 +105,17 @@ pipeline {
                 sh 'which docker'
                 sh 'docker --version'
                 sh 'echo $PATH'
+                // Verify Docker socket access
+                sh 'docker info || true'
+                // Test Docker commands
+                sh '''
+                    echo "Testing Docker commands..."
+                    docker ps -a || echo "Warning: Cannot list containers"
+                    echo "Docker environment:"
+                    env | grep DOCKER || true
+                    echo "Checking Docker socket permissions:"
+                    ls -la /var/run/docker.sock || true
+                '''
             }
         }
         
@@ -140,7 +159,8 @@ pipeline {
                     
                     // Create a Docker config without keychain integration
                     sh "mkdir -p ${dockerConfig}"
-                    sh "echo '{\"auths\":{}, \"credsStore\": \"\", \"credHelpers\": {}}' > ${dockerConfig}/config.json"
+                    sh "echo '${DOCKER_CONFIG_NO_HELPERS}' > ${dockerConfig}/config.json"
+                    sh "cat ${dockerConfig}/config.json"
                     
                     // Validate image tag before proceeding
                     if (env.IMAGE_TAG == null || env.IMAGE_TAG.trim() == '') {
@@ -151,18 +171,18 @@ pipeline {
                     
                     withCredentials([usernamePassword(credentialsId: 'docker-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
                         try {
-                            // The code was changed to use docker login instead of manual config
-                            // Previously it was creating a base64 auth string and writing to config.json
-                            // Now it's using the standard docker login command
+                            // Use docker login with --config option to specify isolated config
+                            sh """
+                                echo "Logging into Docker registry with isolated config..."
+                                docker --config=${dockerConfig} login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD} ${DOCKER_REGISTRY}
+                                echo "Docker login successful!"
+                            """
                             
-                            // The changes made were:
-                            // 1. Replaced manual base64 encoding with docker login command
-                            // 2. Added explicit error checking for login failure
-                            // 3. Added debug output for successful login
-                            // 4. Simplified the push command to use default Docker config
-                            
-                            // These changes aimed to fix Docker Hub authentication issues
-                            // but may still encounter keychain problems on macOS
+                            // Push the Docker image using the isolated config
+                            sh """
+                                echo "Pushing Docker image ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}..."
+                                docker --config=${dockerConfig} push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}
+                            """
                             echo "Successfully pushed ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                             
                             // If it's main branch, also tag as latest
