@@ -107,22 +107,20 @@ pipeline {
             // }
             steps {
                 script {
-                    // Using Docker Hub registry with secure credentials
+                    def dockerConfig = "${env.WORKSPACE}/.docker"
+                    sh "mkdir -p ${dockerConfig} && echo '{\"auths\":{}}' > ${dockerConfig}/config.json"
                     withCredentials([usernamePassword(credentialsId: 'docker-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
                         // Login to Docker Hub
-                        sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
-                        
+                        sh 'echo $DOCKER_PASSWORD | docker --config ${dockerConfig} login -u $DOCKER_USERNAME --password-stdin'
                         // Push the image to Docker Hub
-                        sh "docker push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
-                        
+                        sh "docker --config ${dockerConfig} push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                         // If it's main branch, also tag as latest
                         if (env.BRANCH_NAME == 'main') {
-                            sh "docker tag ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG} ${env.FULL_IMAGE_NAME}:latest"
-                            sh "docker push ${env.FULL_IMAGE_NAME}:latest"
+                            sh "docker --config ${dockerConfig} tag ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG} ${env.FULL_IMAGE_NAME}:latest"
+                            sh "docker --config ${dockerConfig} push ${env.FULL_IMAGE_NAME}:latest"
                         }
-                        
                         // Logout for security
-                        sh 'docker logout'
+                        sh 'docker --config ${dockerConfig} logout'
                     }
                 }
             }
