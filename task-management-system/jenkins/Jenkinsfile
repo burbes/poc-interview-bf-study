@@ -8,8 +8,8 @@ pipeline {
         // SONAR_CREDENTIALS = credentials('sonar-credentials')
         DOCKER_CREDENTIALS = credentials('docker-credentials')
         DOCKER_REGISTRY = 'docker.io'
-        DOCKER_USERNAME = 'burbes'
-        DOCKER_PASSWORD = 'dckr_pat_KK0fyXSzEuT8a2U8GwUntTsEtKY'
+        DOCKER_USERNAME = credentials('docker-credentials', 'username')
+        DOCKER_PASSWORD = credentials('docker-credentials', 'password')
         DOCKER_REPO = 'task-management-system'
         DOCKER_CONFIG = "${env.WORKSPACE}/.docker"
         // Disable macOS keychain for Docker
