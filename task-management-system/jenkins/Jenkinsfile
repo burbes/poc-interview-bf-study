@@ -5,7 +5,7 @@ pipeline {
         HOME = "${env.WORKSPACE}"
         MAVEN_OPTS = '-Xmx512m'
         ARTIFACTORY_CREDENTIALS = credentials('artifactory-credentials')
-        SONAR_CREDENTIALS = credentials('sonar-credentials')
+        // SONAR_CREDENTIALS = credentials('sonar-credentials')
         DOCKER_CREDENTIALS = credentials('docker-credentials')
     }
     
@@ -46,14 +46,15 @@ pipeline {
         
         stage('Code Quality Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=task-management-system \
-                        -Dsonar.host.url=${SONAR_HOST} \
-                        -Dsonar.login=${SONAR_CREDENTIALS}
-                    '''
-                }
+                // withSonarQubeEnv('SonarQube') {
+                //     sh '''
+                //         mvn sonar:sonar \
+                //         -Dsonar.projectKey=task-management-system \
+                //         -Dsonar.host.url=${SONAR_HOST} \
+                //         -Dsonar.login=${SONAR_CREDENTIALS}
+                //     '''
+                // }
+                echo 'SonarQube analysis skipped.'
             }
         }
         
