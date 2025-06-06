@@ -32,13 +32,13 @@ pipeline {
         
         stage('Clean & Compile') {
             steps {
-                sh 'mvn clean compile'
+                sh 'cd task-management-system && mvn clean compile'
             }
         }
         
         stage('Test') {
             steps {
-                sh 'mvn test'
+                sh 'cd task-management-system && mvn test'
             }
             post {
                 always {
@@ -63,8 +63,8 @@ pipeline {
         
         stage('Package') {
             steps {
-                sh 'mvn package -DskipTests'
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                sh 'cd task-management-system && mvn package -DskipTests'
+                archiveArtifacts artifacts: 'task-management-system/target/*.jar', fingerprint: true
             }
         }
         
