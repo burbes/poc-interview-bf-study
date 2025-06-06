@@ -7,6 +7,9 @@ pipeline {
         ARTIFACTORY_CREDENTIALS = credentials('artifactory-credentials')
         // SONAR_CREDENTIALS = credentials('sonar-credentials')
         DOCKER_CREDENTIALS = credentials('docker-credentials')
+        DOCKER_REGISTRY = 'docker.io'
+        DOCKER_USERNAME = 'burbes'
+        DOCKER_REPO = 'task-management-system'
     }
     
     stages {
@@ -94,7 +97,8 @@ pipeline {
                 script {
                     def imageTag = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}-${env.GIT_COMMIT.substring(0,7)}"
                     env.IMAGE_TAG = imageTag
-                    sh "docker build -t task-management-system:${imageTag} -f docker/Dockerfile ."
+                    env.FULL_IMAGE_NAME = "${env.DOCKER_USERNAME}/${env.DOCKER_REPO}"
+                    sh "docker build -t ${env.FULL_IMAGE_NAME}:${imageTag} -f docker/Dockerfile ."
                 }
             }
         }
@@ -105,9 +109,22 @@ pipeline {
             // }
             steps {
                 script {
-                    docker.withRegistry('https://registry.example.com', 'docker-credentials') {
-                        sh "docker tag task-management-system:${env.IMAGE_TAG} registry.example.com/task-management-system:${env.IMAGE_TAG}"
-                        sh "docker push registry.example.com/task-management-system:${env.IMAGE_TAG}"
+                    // Using Docker Hub registry with secure credentials
+                    withCredentials([usernamePassword(credentialsId: 'docker-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                        // Login to Docker Hub
+                        sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
+                        
+                        // Push the image to Docker Hub
+                        sh "docker push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
+                        
+                        // If it's main branch, also tag as latest
+                        if (env.BRANCH_NAME == 'main') {
+                            sh "docker tag ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG} ${env.FULL_IMAGE_NAME}:latest"
+                            sh "docker push ${env.FULL_IMAGE_NAME}:latest"
+                        }
+                        
+                        // Logout for security
+                        sh 'docker logout'
                     }
                 }
             }
@@ -125,7 +142,8 @@ pipeline {
                     inventory: 'ansible/inventory/dev',
                     extraVars: [
                         app_version: "${env.BUILD_NUMBER}",
-                        environment: 'dev'
+                        environment: 'dev',
+                        docker_image: "${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                     ]
                 )
             }
@@ -145,7 +163,8 @@ pipeline {
                     inventory: 'ansible/inventory/staging',
                     extraVars: [
                         app_version: "${env.BUILD_NUMBER}",
-                        environment: 'staging'
+                        environment: 'staging',
+                        docker_image: "${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                     ]
                 )
             }
@@ -165,7 +184,8 @@ pipeline {
                     inventory: 'ansible/inventory/prod',
                     extraVars: [
                         app_version: "${env.BUILD_NUMBER}",
-                        environment: 'prod'
+                        environment: 'prod',
+                        docker_image: "${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                     ]
                 )
             }
@@ -184,7 +204,8 @@ pipeline {
                     inventory: "ansible/inventory/${env.ENVIRONMENT}",
                     extraVars: [
                         app_version: "${params.ROLLBACK_TO_TAG}",
-                        environment: env.ENVIRONMENT
+                        environment: env.ENVIRONMENT,
+                        docker_image: "${env.DOCKER_USERNAME}/${env.DOCKER_REPO}:${params.ROLLBACK_TO_TAG}"
                     ]
                 )
             }
@@ -194,6 +215,8 @@ pipeline {
     post {
         always {
             echo 'Pipeline execution completed'
+            // Ensure we're logged out of Docker for security
+            sh 'docker logout || true'
             // Clean workspace
             cleanWs()
         }
