@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    <Properties>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %5p ${hostName} --- [%15.15t] %-40.40c{1.} : %m%n%ex</Property>
+        <Property name="APP_LOG_ROOT">logs</Property>
+        <Property name="ARCHIVE_LOG_ROOT">${APP_LOG_ROOT}/archive</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- Console Appender -->
+        <Console name="Console" target="SYSTEM_OUT" follow="true">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <!-- Rolling File Appender for application logs -->
+        <RollingFile name="ApplicationLog" 
+                     fileName="${APP_LOG_ROOT}/application.log"
+                     filePattern="${ARCHIVE_LOG_ROOT}/application-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="19500KB" />
+                <TimeBasedTriggeringPolicy interval="1" />
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
+
+        <!-- Rolling File Appender for ERROR logs only -->
+        <RollingFile name="ErrorLog" 
+                     fileName="${APP_LOG_ROOT}/error.log"
+                     filePattern="${ARCHIVE_LOG_ROOT}/error-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <LevelRangeFilter minLevel="ERROR" maxLevel="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="19500KB" />
+                <TimeBasedTriggeringPolicy interval="1" />
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
+
+        <!-- Async appenders for better performance -->
+        <Async name="AsyncAppLog">
+            <AppenderRef ref="ApplicationLog"/>
+        </Async>
+        <Async name="AsyncErrorLog">
+            <AppenderRef ref="ErrorLog"/>
+        </Async>
+        <Async name="AsyncConsole">
+            <AppenderRef ref="Console"/>
+        </Async>
+    </Appenders>
+
+    <Loggers>
+        <!-- Application Loggers -->
+        <Logger name="com.example.taskmanagement" level="DEBUG" additivity="false">
+            <AppenderRef ref="AsyncAppLog"/>
+            <AppenderRef ref="AsyncErrorLog"/>
+            <AppenderRef ref="AsyncConsole"/>
+        </Logger>
+
+        <!-- Spring Framework Loggers -->
+        <Logger name="org.springframework" level="INFO" additivity="false">
+            <AppenderRef ref="AsyncAppLog"/>
+            <AppenderRef ref="AsyncErrorLog"/>
+            <AppenderRef ref="AsyncConsole"/>
+        </Logger>
+
+        <!-- Hibernate Loggers -->
+        <Logger name="org.hibernate" level="INFO" additivity="false">
+            <AppenderRef ref="AsyncAppLog"/>
+            <AppenderRef ref="AsyncErrorLog"/>
+            <AppenderRef ref="AsyncConsole"/>
+        </Logger>
+        
+        <!-- SQL Loggers - Only enable for development -->
+        <Logger name="org.hibernate.SQL" level="INFO" additivity="false">
+            <AppenderRef ref="AsyncAppLog"/>
+            <AppenderRef ref="AsyncConsole"/>
+        </Logger>
+        
+        <!-- Parameter Binding Loggers - Only enable for development -->
+        <Logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="INFO" additivity="false">
+            <AppenderRef ref="AsyncAppLog"/>
+            <AppenderRef ref="AsyncConsole"/>
+        </Logger>
+
+        <!-- Root Logger -->
+        <Root level="INFO">
+            <AppenderRef ref="AsyncAppLog"/>
+            <AppenderRef ref="AsyncErrorLog"/>
+            <AppenderRef ref="AsyncConsole"/>
+        </Root>
+    </Loggers>
+</Configuration>
+

@@ -1,0 +1,78 @@
+---
+- name: Deploy task-management-system to Development environment
+  hosts: dev
+  become: true
+  vars:
+    app_name: task-management-system
+    app_version: "{{ app_version | default('latest') }}"
+    container_name: "{{ app_name }}"
+    docker_image: "registry.example.com/{{ app_name }}:{{ app_version }}"
+    app_port: 8080
+    db_host: "mysql"
+    db_port: 3306
+    db_name: "task_management_dev"
+    db_user: "{{ lookup('env', 'DB_USERNAME') }}"
+    db_password: "{{ lookup('env', 'DB_PASSWORD') }}"
+    jwt_secret: "{{ lookup('env', 'JWT_SECRET') }}"
+    spring_profile: "dev"
+
+  tasks:
+    - name: Ensure docker is installed
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Ensure docker-compose is installed
+      apt:
+        name: docker-compose
+        state: present
+
+    - name: Create app directory
+      file:
+        path: "/opt/{{ app_name }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy docker-compose.yml
+      template:
+        src: templates/docker-compose.yml.j2
+        dest: "/opt/{{ app_name }}/docker-compose.yml"
+        mode: '0644'
+
+    - name: Login to Docker registry
+      docker_login:
+        registry: registry.example.com
+        username: "{{ lookup('env', 'DOCKER_USERNAME') }}"
+        password: "{{ lookup('env', 'DOCKER_PASSWORD') }}"
+        reauthorize: yes
+
+    - name: Pull Docker image
+      docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+        force_source: yes
+
+    - name: Stop running containers
+      docker_compose:
+        project_src: "/opt/{{ app_name }}"
+        state: absent
+
+    - name: Start containers
+      docker_compose:
+        project_src: "/opt/{{ app_name }}"
+        state: present
+
+    - name: Check if application is running
+      uri:
+        url: "http://localhost:{{ app_port }}/api/actuator/health"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 5
+      delay: 10
+
+    - name: Deployment completed
+      debug:
+        msg: "Application deployed successfully"
+

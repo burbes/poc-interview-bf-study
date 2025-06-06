@@ -1,0 +1,2 @@
+[prod]
+prod-server-1 ansible_host=prod.example.com ansible_user=ubuntu 

@@ -1,0 +1,2 @@
+[staging]
+staging-server-1 ansible_host=staging.example.com ansible_user=ubuntu 
