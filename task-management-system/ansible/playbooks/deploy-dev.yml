@@ -16,16 +16,15 @@
     spring_profile: "dev"
 
   tasks:
-    - name: Ensure docker is installed
-      apt:
-        name: docker.io
-        state: present
-        update_cache: yes
+    - name: Check if Docker is installed
+      command: docker --version
+      register: docker_check
+      ignore_errors: yes
 
-    - name: Ensure docker-compose is installed
-      apt:
-        name: docker-compose
-        state: present
+    - name: Fail if Docker is not installed
+      fail:
+        msg: "Docker is not installed. Please install Docker Desktop for Mac."
+      when: docker_check.rc != 0
 
     - name: Create app directory
       file:
