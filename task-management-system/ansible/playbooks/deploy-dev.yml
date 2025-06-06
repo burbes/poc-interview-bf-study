@@ -46,11 +46,11 @@
         password: "{{ lookup('env', 'DOCKER_PASSWORD') }}"
         reauthorize: yes
 
-    - name: Pull Docker image
-      docker_image:
-        name: "{{ docker_image }}"
-        source: pull
-        force_source: yes
+    # - name: Pull Docker image
+    #   docker_image:
+    #     name: "{{ docker_image }}"
+    #     source: pull
+    #     force_source: yes
 
     - name: Stop running containers
       community.docker.docker_compose_v2:
