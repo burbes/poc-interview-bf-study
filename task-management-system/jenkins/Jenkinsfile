@@ -141,26 +141,23 @@ pipeline {
                     
                     withCredentials([usernamePassword(credentialsId: 'docker-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
                         try {
-                            // Create auth entry directly in config.json instead of using login command
-                            def auth = sh(script: "echo -n '$DOCKER_USERNAME:$DOCKER_PASSWORD' | base64", returnStdout: true).trim()
+                            // CHANGE: Use direct docker login command instead of manually creating config files
+                            // This is more reliable and the standard approach for Docker authentication
+                            sh '''
+                                # Direct login with Docker Hub credentials
+                                echo $DOCKER_PASSWORD | docker login $DOCKER_REGISTRY --username $DOCKER_USERNAME --password-stdin
+                                
+                                # Verify login success
+                                if [ $? -ne 0 ]; then
+                                  echo "ERROR: Docker login failed. Check credentials and permissions."
+                                  exit 1
+                                fi
+                                
+                                echo "DEBUG: Docker login successful"
+                            '''
                             
-                            // Write auth directly to config file to avoid keychain
-                            sh """
-                                echo '{
-                                  "auths": {
-                                    "${env.DOCKER_REGISTRY}": {
-                                      "auth": "${auth}"
-                                    }
-                                  },
-                                  "credsStore": "",
-                                  "credHelpers": {}
-                                }' > ${dockerConfig}/config.json
-                            """
-                            
-                            echo "Docker authentication configured without keychain"
-                            
-                            // Push the image to Docker Hub using the config file
-                            sh "docker --config ${dockerConfig} push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
+                            // Push the image to Docker Hub (no custom config needed)
+                            sh "docker push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                             echo "Successfully pushed ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                             
                             // If it's main branch, also tag as latest
@@ -172,10 +169,11 @@ pipeline {
                             }
                         } catch (Exception e) {
                             echo "Error during Docker push: ${e.message}"
-                            error "Failed to push Docker image"
+                            sh "docker logout || true"
+                            error "Failed to push Docker image: ${e.message}"
                         } finally {
-                            // Clean up the Docker config file for security
-                            sh "rm -f ${dockerConfig}/config.json || true"
+                            // Proper Docker logout to clean up credentials
+                            sh "docker logout || true"
                             echo "Docker credentials cleaned up"
                         }
                     }
