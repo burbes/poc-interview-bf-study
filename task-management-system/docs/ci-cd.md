@@ -41,4 +41,12 @@ flowchart TD
 ## References
 - [Jenkinsfile](../jenkins/Jenkinsfile)
 - [Dockerfile](../docker/Dockerfile)
-- [Ansible playbooks](../ansible/playbooks/) 
+- [Ansible playbooks](../ansible/playbooks/)
+
+## Troubleshooting: Docker Not Found in Jenkins Pipeline
+
+- If you see `docker: command not found` during the Docker build stage, the Jenkins agent/node does not have Docker installed or available in the PATH.
+- **Solution:**
+  - Install Docker on the Jenkins agent/node.
+  - If Jenkins runs in a Docker container, mount the Docker socket (`-v /var/run/docker.sock:/var/run/docker.sock`) or use a Docker-enabled agent image.
+  - Ensure the agent is labeled or selected for Docker builds in your Jenkinsfile. 

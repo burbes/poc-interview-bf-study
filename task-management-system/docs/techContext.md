@@ -40,6 +40,13 @@
 - Monitoring with Spring Actuator
 - Logging with Log4j2
 
+## Jenkins Agent Docker Requirements
+
+- Jenkins agents/nodes that execute Docker build or deployment stages **must have Docker installed and available in the system PATH**.
+- If Jenkins is running inside a Docker container, ensure the Docker socket is mounted (e.g., `-v /var/run/docker.sock:/var/run/docker.sock`) or use a Docker-enabled agent image with the Docker CLI installed and access to the Docker daemon.
+- Verify Docker installation by running `docker --version` on the agent.
+- For cloud or managed Jenkins, select a node/agent with Docker capability or install Docker as part of the agent setup.
+
 ## JFrog Artifactory Guidelines
 - Use JFrog for storing Maven artifacts (JAR/WAR) and Docker images.
 - Configure Jenkins with JFrog credentials (use Jenkins credentials store, never hardcode).

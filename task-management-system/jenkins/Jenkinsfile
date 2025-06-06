@@ -91,6 +91,14 @@ pipeline {
         //     }
         // }
         
+        stage('Verify Docker') {
+            steps {
+                sh 'which docker'
+                sh 'docker --version'
+                sh 'echo $PATH'
+            }
+        }
+        
         stage('Build Docker Image') {
             // when {
             //     expression { env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' }
@@ -183,11 +191,12 @@ pipeline {
             // }
             steps {
                 echo 'Deploying to Development environment...'
-                // Use Ansible for deployment
+                // Debug: Show PATH and Ansible info
                 sh 'echo $PATH'
                 sh 'which ansible-playbook || true'
                 sh 'ansible-playbook --version || true'
                 sh 'ansible-galaxy collection list || true'
+                // Use Ansible for deployment
                 ansiblePlaybook(
                     playbook: 'task-management-system/ansible/playbooks/deploy-dev.yml',
                     inventory: 'task-management-system/ansible/inventory/dev',
