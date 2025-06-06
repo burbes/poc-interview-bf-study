@@ -8,8 +8,6 @@ pipeline {
         // SONAR_CREDENTIALS = credentials('sonar-credentials')
         DOCKER_CREDENTIALS = credentials('docker-credentials')
         DOCKER_REGISTRY = 'docker.io'
-        DOCKER_USERNAME = credentials('docker-credentials', 'username')
-        DOCKER_PASSWORD = credentials('docker-credentials', 'password')
         DOCKER_REPO = 'task-management-system'
         DOCKER_CONFIG = "${env.WORKSPACE}/.docker"
         // Disable macOS keychain for Docker
@@ -237,7 +235,7 @@ pipeline {
                     
                     // Use DOCKER_PASSWORD env var for docker login
                     if (env.DOCKER_PASSWORD && env.DOCKER_USERNAME) {
-                        sh "docker --config ${dockerConfig} login -u ${env.DOCKER_USERNAME} -p ${env.DOCKER_PASSWORD} ${env.DOCKER_REGISTRY}"
+                        sh "docker --config ${dockerConfig} login -u $DOCKER_CREDENTIALS_USR -p $DOCKER_CREDENTIALS_PSW $DOCKER_REGISTRY"
                     }
                     try {
                         sh "docker --config ${dockerConfig} push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
