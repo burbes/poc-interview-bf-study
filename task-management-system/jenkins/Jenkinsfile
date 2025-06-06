@@ -159,8 +159,7 @@ pipeline {
                     
                     // Create a Docker config without keychain integration
                     sh "mkdir -p ${dockerConfig}"
-                    sh "echo '${DOCKER_CONFIG_NO_HELPERS}' > ${dockerConfig}/config.json"
-                    sh "cat ${dockerConfig}/config.json"
+                    sh "echo '{\"auths\":{}, \"credsStore\": \"\", \"credHelpers\": {}}' > ${dockerConfig}/config.json"
                     
                     // Validate image tag before proceeding
                     if (env.IMAGE_TAG == null || env.IMAGE_TAG.trim() == '') {
@@ -169,38 +168,24 @@ pipeline {
                     
                     echo "Preparing to push Docker image: ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                     
-                    withCredentials([usernamePassword(credentialsId: 'docker-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
-                        try {
-                            // Use docker login with --config option to specify isolated config
-                            sh """
-                                echo "Logging into Docker registry with isolated config..."
-                                docker --config=${dockerConfig} login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD} ${DOCKER_REGISTRY}
-                                echo "Docker login successful!"
-                            """
-                            
-                            // Push the Docker image using the isolated config
-                            sh """
-                                echo "Pushing Docker image ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}..."
-                                docker --config=${dockerConfig} push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}
-                            """
-                            echo "Successfully pushed ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
-                            
-                            // If it's main branch, also tag as latest
-                            def branchName = env.BRANCH_NAME != null ? env.BRANCH_NAME : 'dev'
-                            if (branchName == 'main') {
-                                sh "docker --config ${dockerConfig} tag ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG} ${env.FULL_IMAGE_NAME}:latest"
-                                sh "docker --config ${dockerConfig} push ${env.FULL_IMAGE_NAME}:latest"
-                                echo "Successfully pushed ${env.FULL_IMAGE_NAME}:latest"
-                            }
-                        } catch (Exception e) {
-                            echo "Error during Docker push: ${e.message}"
-                            sh "docker logout || true"
-                            error "Failed to push Docker image: ${e.message}"
-                        } finally {
-                            // Proper Docker logout to clean up credentials
-                            sh "docker logout || true"
-                            echo "Docker credentials cleaned up"
+                    // Remove docker login and credentials usage
+                    try {
+                        sh "docker --config ${dockerConfig} push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
+                        echo "Successfully pushed ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
+                        
+                        // If it's main branch, also tag as latest
+                        def branchName = env.BRANCH_NAME != null ? env.BRANCH_NAME : 'dev'
+                        if (branchName == 'main') {
+                            sh "docker --config ${dockerConfig} tag ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG} ${env.FULL_IMAGE_NAME}:latest"
+                            sh "docker --config ${dockerConfig} push ${env.FULL_IMAGE_NAME}:latest"
+                            echo "Successfully pushed ${env.FULL_IMAGE_NAME}:latest"
                         }
+                    } catch (Exception e) {
+                        echo "Error during Docker push: ${e.message}"
+                        error "Failed to push Docker image: ${e.message}"
+                    } finally {
+                        // Clean up Docker config
+                        echo "Docker credentials cleaned up"
                     }
                 }
             }
