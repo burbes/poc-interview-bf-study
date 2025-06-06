@@ -246,8 +246,8 @@ pipeline {
                 echo "Rolling back to Docker image tag: ${params.ROLLBACK_TO_TAG}"
                 // Use Ansible to redeploy previous image
                 ansiblePlaybook(
-                    playbook: 'ansible/playbooks/deploy-${env.ENVIRONMENT}.yml',
-                    inventory: "ansible/inventory/${env.ENVIRONMENT}",
+                    playbook: 'task-management-system/ansible/playbooks/deploy-${env.ENVIRONMENT}.yml',
+                    inventory: "task-management-system/ansible/inventory/${env.ENVIRONMENT}",
                     extraVars: [
                         app_version: "${params.ROLLBACK_TO_TAG}",
                         environment: env.ENVIRONMENT,
