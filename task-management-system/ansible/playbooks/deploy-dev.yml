@@ -6,7 +6,7 @@
     app_name: task-management-system
     app_version: "{{ app_version | default('latest') }}"
     container_name: "{{ app_name }}"
-    docker_image: "registry.example.com/{{ app_name }}:{{ app_version }}"
+    docker_image: "burbes/task-management-system:{{ app_version }}"
     app_port: 8080
     db_host: "mysql"
     db_port: 3306
@@ -42,7 +42,7 @@
 
     - name: Login to Docker registry
       docker_login:
-        registry: registry.example.com
+        registry: docker.io
         username: "{{ lookup('env', 'DOCKER_USERNAME') }}"
         password: "{{ lookup('env', 'DOCKER_PASSWORD') }}"
         reauthorize: yes
