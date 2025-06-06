@@ -4,26 +4,26 @@ pipeline {
     environment {
         HOME = "${env.WORKSPACE}"
         MAVEN_OPTS = '-Xmx512m'
-        // ARTIFACTORY_CREDENTIALS = credentials('artifactory-credentials')
-        // SONAR_CREDENTIALS = credentials('sonar-credentials')
-        // DOCKER_CREDENTIALS = credentials('docker-credentials')
+        ARTIFACTORY_CREDENTIALS = credentials('artifactory-credentials')
+        SONAR_CREDENTIALS = credentials('sonar-credentials')
+        DOCKER_CREDENTIALS = credentials('docker-credentials')
     }
     
     stages {
-        stage('Debug Info') {
-            steps {
-                echo "Pipeline started"
-                echo "BRANCH_NAME: ${env.BRANCH_NAME}"
-                echo "WORKSPACE: ${env.WORKSPACE}"
-                sh 'printenv'
-            }
-        }
         stage('Checkout') {
             steps {
                 checkout scm
                 sh 'git --version'
                 sh 'mvn --version'
                 echo "Building branch: ${env.BRANCH_NAME}"
+            }
+        }
+        stage('Debug Info') {
+            steps {
+                echo "Pipeline started"
+                echo "BRANCH_NAME: ${env.BRANCH_NAME}"
+                echo "WORKSPACE: ${env.WORKSPACE}"
+                sh 'printenv'
             }
         }
         
@@ -65,9 +65,9 @@ pipeline {
         }
         
         stage('Publish to Artifactory') {
-            // when {
+            //when {
             //     expression { env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' }
-            // }
+            //  }
             steps {
                 script {
                     def server = Artifactory.server 'artifactory-server'
