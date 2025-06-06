@@ -1,7 +1,6 @@
 ---
 - name: Deploy task-management-system to Development environment
   hosts: dev
-  become: true
   vars:
     app_name: task-management-system
     app_version: "{{ app_version | default('latest') }}"
