@@ -10,6 +10,7 @@ pipeline {
         DOCKER_REGISTRY = 'docker.io'
         DOCKER_USERNAME = 'burbes'
         DOCKER_REPO = 'task-management-system'
+        DOCKER_CONFIG = "${env.WORKSPACE}/.docker"
     }
     
     stages {
