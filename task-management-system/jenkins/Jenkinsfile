@@ -102,20 +102,86 @@ pipeline {
         
         stage('Verify Docker') {
             steps {
-                sh 'which docker'
-                sh 'docker --version'
-                sh 'echo $PATH'
-                // Verify Docker socket access
-                sh 'docker info || true'
-                // Test Docker commands
-                sh '''
-                    echo "Testing Docker commands..."
-                    docker ps -a || echo "Warning: Cannot list containers"
-                    echo "Docker environment:"
-                    env | grep DOCKER || true
-                    echo "Checking Docker socket permissions:"
-                    ls -la /var/run/docker.sock || true
-                '''
+                script {
+                    // Create a temporary directory for Docker configuration
+                    def dockerConfig = "${env.WORKSPACE}/.docker-verify"
+                    
+                    try {
+                        // Basic Docker verification
+                        sh 'which docker || { echo "Docker not found in PATH"; exit 1; }'
+                        sh 'docker --version || { echo "Failed to get Docker version"; exit 1; }'
+                        sh 'echo "Current PATH: $PATH"'
+                        
+                        // Verify Docker socket access
+                        sh '''
+                            echo "🔍 Verifying Docker daemon access..."
+                            if ! docker info; then
+                                echo "⚠️ Warning: Cannot access Docker daemon"
+                                echo "Check if Docker is running and permissions are correct"
+                                echo "Error details:" 
+                                docker info 2>&1 || true
+                            else
+                                echo "✅ Docker daemon is accessible"
+                            fi
+                        '''
+                        
+                        // Test Docker commands
+                        sh '''
+                            echo "🔍 Testing Docker commands..."
+                            if ! docker ps -a; then
+                                echo "⚠️ Warning: Cannot list containers"
+                                echo "This might indicate permission issues"
+                            else
+                                echo "✅ Can list Docker containers"
+                            fi
+                            
+                            echo "🔍 Docker environment variables:"
+                            env | grep DOCKER || echo "No Docker environment variables found"
+                            
+                            echo "🔍 Checking Docker socket permissions:"
+                            ls -la /var/run/docker.sock || echo "⚠️ Docker socket not found or accessible"
+                        '''
+                        
+                        // Verify Docker Hub connectivity 
+                        sh '''
+                            echo "🔍 Testing connectivity to Docker Hub..."
+                            if curl -s --max-time 10 https://hub.docker.com/v2/ > /dev/null; then
+                                echo "✅ Can connect to Docker Hub API"
+                            else
+                                echo "⚠️ Warning: Cannot connect to Docker Hub API"
+                                echo "This might indicate network issues or firewall restrictions"
+                            fi
+                        '''
+                        
+                        // Create isolated Docker config for auth test
+                        sh "mkdir -p ${dockerConfig}"
+                        sh "echo '${DOCKER_CONFIG_NO_HELPERS}' > ${dockerConfig}/config.json"
+                        
+                        // Test Docker login with explicit credentials
+                        withCredentials([usernamePassword(credentialsId: 'docker-credentials', 
+                                         passwordVariable: 'DOCKER_PASSWORD', 
+                                         usernameVariable: 'DOCKER_USERNAME')]) {
+                            sh """
+                                echo "🔍 Testing Docker authentication..."
+                                if docker --config=${dockerConfig} login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD} ${DOCKER_REGISTRY}; then
+                                    echo "✅ Docker authentication successful"
+                                else
+                                    echo "⚠️ Warning: Docker authentication failed"
+                                    echo "Check credentials and Docker Hub account status"
+                                fi
+                            """
+                        }
+                    } catch (Exception e) {
+                        echo "❌ Error during Docker verification: ${e.message}"
+                        echo "Stack trace: ${e.toString()}"
+                        // Don't fail the build, but flag the issue
+                        echo "⚠️ Docker verification encountered issues - the pipeline may fail later"
+                    } finally {
+                        // Clean up the temporary Docker config
+                        sh "rm -rf ${dockerConfig} || true"
+                        echo "🧹 Cleaned up temporary Docker configuration"
+                    }
+                }
             }
         }
         
@@ -159,7 +225,8 @@ pipeline {
                     
                     // Create a Docker config without keychain integration
                     sh "mkdir -p ${dockerConfig}"
-                    sh "echo '{\"auths\":{}, \"credsStore\": \"\", \"credHelpers\": {}}' > ${dockerConfig}/config.json"
+                    sh "echo '${DOCKER_CONFIG_NO_HELPERS}' > ${dockerConfig}/config.json"
+                    sh "cat ${dockerConfig}/config.json"
                     
                     // Validate image tag before proceeding
                     if (env.IMAGE_TAG == null || env.IMAGE_TAG.trim() == '') {
@@ -168,8 +235,20 @@ pipeline {
                     
                     echo "Preparing to push Docker image: ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                     
-                    // Remove docker login and credentials usage
+                    // Login to Docker Hub with credentials and isolated config
                     try {
+                        // Log in to Docker Hub
+                        withCredentials([usernamePassword(credentialsId: 'docker-credentials', 
+                                         passwordVariable: 'DOCKER_PASSWORD', 
+                                         usernameVariable: 'DOCKER_USERNAME')]) {
+                            sh """
+                                echo "🔑 Logging into Docker registry..."
+                                docker --config=${dockerConfig} login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD} ${DOCKER_REGISTRY}
+                                echo "✅ Docker login successful"
+                            """
+                        }
+                        
+                        echo "🚀 Pushing Docker image: ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                         sh "docker --config ${dockerConfig} push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                         echo "Successfully pushed ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                         
@@ -181,11 +260,14 @@ pipeline {
                             echo "Successfully pushed ${env.FULL_IMAGE_NAME}:latest"
                         }
                     } catch (Exception e) {
-                        echo "Error during Docker push: ${e.message}"
+                        echo "❌ Error during Docker push: ${e.message}"
+                        echo "Stack trace: ${e.toString()}"
                         error "Failed to push Docker image: ${e.message}"
                     } finally {
-                        // Clean up Docker config
-                        echo "Docker credentials cleaned up"
+                        // Log out and clean up Docker config
+                        sh "docker --config=${dockerConfig} logout ${DOCKER_REGISTRY} || true"
+                        sh "rm -rf ${dockerConfig} || true"
+                        echo "🧹 Docker credentials cleaned up"
                     }
                 }
             }
@@ -282,7 +364,9 @@ pipeline {
         always {
             echo 'Pipeline execution completed'
             // Clean up any Docker config files
-            sh 'rm -rf ${WORKSPACE}/.docker || true'
+            sh 'rm -rf ${WORKSPACE}/.docker* || true'
+            // Logout from Docker Hub if needed
+            sh 'docker logout || true'
             // Clean workspace
             cleanWs()
         }
