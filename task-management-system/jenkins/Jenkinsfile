@@ -13,7 +13,8 @@ pipeline {
         DOCKER_CONFIG = "${env.WORKSPACE}/.docker"
         // Disable macOS keychain for Docker
         DOCKER_CLI_EXPERIMENTAL = "enabled"
-        PATH = "/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
+        JAVA_HOME = "/opt/homebrew/opt/openjdk@21"
+        PATH = "/opt/homebrew/opt/openjdk@21/bin:/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
     }
     
     stages {
