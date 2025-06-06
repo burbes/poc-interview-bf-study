@@ -54,12 +54,12 @@
         force_source: yes
 
     - name: Stop running containers
-      docker_compose:
+      docker_compose_v2:
         project_src: "/opt/{{ app_name }}"
         state: absent
 
     - name: Start containers
-      docker_compose:
+      docker_compose_v2:
         project_src: "/opt/{{ app_name }}"
         state: present
 
