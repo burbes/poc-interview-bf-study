@@ -13,6 +13,7 @@ pipeline {
         DOCKER_CONFIG = "${env.WORKSPACE}/.docker"
         // Disable macOS keychain for Docker
         DOCKER_CLI_EXPERIMENTAL = "enabled"
+        PATH = "/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
     }
     
     stages {
@@ -183,6 +184,10 @@ pipeline {
             steps {
                 echo 'Deploying to Development environment...'
                 // Use Ansible for deployment
+                sh 'echo $PATH'
+                sh 'which ansible-playbook || true'
+                sh 'ansible-playbook --version || true'
+                sh 'ansible-galaxy collection list || true'
                 ansiblePlaybook(
                     playbook: 'task-management-system/ansible/playbooks/deploy-dev.yml',
                     inventory: 'task-management-system/ansible/inventory/dev',
