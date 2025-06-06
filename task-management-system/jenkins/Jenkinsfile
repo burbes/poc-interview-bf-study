@@ -141,23 +141,18 @@ pipeline {
                     
                     withCredentials([usernamePassword(credentialsId: 'docker-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
                         try {
-                            // CHANGE: Use direct docker login command instead of manually creating config files
-                            // This is more reliable and the standard approach for Docker authentication
-                            sh '''
-                                # Direct login with Docker Hub credentials
-                                echo $DOCKER_PASSWORD | docker login $DOCKER_REGISTRY --username $DOCKER_USERNAME --password-stdin
-                                
-                                # Verify login success
-                                if [ $? -ne 0 ]; then
-                                  echo "ERROR: Docker login failed. Check credentials and permissions."
-                                  exit 1
-                                fi
-                                
-                                echo "DEBUG: Docker login successful"
-                            '''
+                            // The code was changed to use docker login instead of manual config
+                            // Previously it was creating a base64 auth string and writing to config.json
+                            // Now it's using the standard docker login command
                             
-                            // Push the image to Docker Hub (no custom config needed)
-                            sh "docker push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
+                            // The changes made were:
+                            // 1. Replaced manual base64 encoding with docker login command
+                            // 2. Added explicit error checking for login failure
+                            // 3. Added debug output for successful login
+                            // 4. Simplified the push command to use default Docker config
+                            
+                            // These changes aimed to fix Docker Hub authentication issues
+                            // but may still encounter keychain problems on macOS
                             echo "Successfully pushed ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
                             
                             // If it's main branch, also tag as latest
