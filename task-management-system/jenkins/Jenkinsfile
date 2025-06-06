@@ -184,8 +184,8 @@ pipeline {
                 echo 'Deploying to Development environment...'
                 // Use Ansible for deployment
                 ansiblePlaybook(
-                    playbook: 'ansible/playbooks/deploy-dev.yml',
-                    inventory: 'ansible/inventory/dev',
+                    playbook: 'task-management-system/ansible/playbooks/deploy-dev.yml',
+                    inventory: 'task-management-system/ansible/inventory/dev',
                     extraVars: [
                         app_version: "${env.BUILD_NUMBER}",
                         environment: 'dev',
@@ -205,8 +205,8 @@ pipeline {
                 input message: 'Deploy to Staging environment?', ok: 'Deploy'
                 // Use Ansible for deployment
                 ansiblePlaybook(
-                    playbook: 'ansible/playbooks/deploy-staging.yml',
-                    inventory: 'ansible/inventory/staging',
+                    playbook: 'task-management-system/ansible/playbooks/deploy-staging.yml',
+                    inventory: 'task-management-system/ansible/inventory/staging',
                     extraVars: [
                         app_version: "${env.BUILD_NUMBER}",
                         environment: 'staging',
@@ -226,8 +226,8 @@ pipeline {
                 input message: 'Deploy to Production environment?', ok: 'Deploy'
                 // Use Ansible for deployment
                 ansiblePlaybook(
-                    playbook: 'ansible/playbooks/deploy-prod.yml',
-                    inventory: 'ansible/inventory/prod',
+                    playbook: 'task-management-system/ansible/playbooks/deploy-prod.yml',
+                    inventory: 'task-management-system/ansible/inventory/prod',
                     extraVars: [
                         app_version: "${env.BUILD_NUMBER}",
                         environment: 'prod',
