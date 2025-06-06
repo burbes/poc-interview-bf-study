@@ -38,4 +38,14 @@
 - Jenkins for CI/CD
 - Ansible for configuration
 - Monitoring with Spring Actuator
-- Logging with Log4j2 
+- Logging with Log4j2
+
+## JFrog Artifactory Guidelines
+- Use JFrog for storing Maven artifacts (JAR/WAR) and Docker images.
+- Configure Jenkins with JFrog credentials (use Jenkins credentials store, never hardcode).
+- Artifacts must be versioned by commit/tag.
+- Retention policy: keep last 10 builds per branch, clean up old artifacts monthly.
+- Rotate JFrog credentials every 90 days.
+- Use encrypted connections (HTTPS) for all artifact uploads/downloads.
+- Document repository structure (e.g., `libs-release-local`, `docker-local`).
+- Troubleshooting: check Jenkins logs, JFrog repo permissions, and network connectivity. 

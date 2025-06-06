@@ -34,4 +34,25 @@ The system is a layered Spring Boot application with RESTful APIs, a MySQL datab
 - **Code:** Follows Java/Spring best practices
 
 ## UML Diagrams
-- Class, sequence, and activity diagrams to be added as the implementation progresses. 
+- Class, sequence, and activity diagrams to be added as the implementation progresses.
+
+## CI/CD Artifact Flow (Jenkins ↔ JFrog ↔ Deployment)
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant Jenkins
+    participant JFrog as JFrog Artifactory
+    participant Deploy as Deployment Target
+    Dev->>Jenkins: Push code/PR
+    Jenkins->>Jenkins: Build, Test, Package
+    Jenkins->>JFrog: Upload artifact (JAR/Docker)
+    JFrog-->>Jenkins: Confirm upload
+    Jenkins->>Deploy: Deploy using artifact from JFrog
+    Deploy-->>Jenkins: Deployment status
+```
+
+### Notes
+- Jenkins uses credentials to push/pull from JFrog.
+- All deployments pull artifacts from JFrog, not from local builds.
+- Rollbacks use previous artifact versions from JFrog. 

@@ -4,7 +4,7 @@ pipeline {
     environment {
         HOME = "${env.WORKSPACE}"
         MAVEN_OPTS = '-Xmx512m'
-        ARTIFACTORY_CREDENTIALS = credentials('artifactory-credentials')
+        // ARTIFACTORY_CREDENTIALS = credentials('artifactory-credentials')
         // SONAR_CREDENTIALS = credentials('sonar-credentials')
         DOCKER_CREDENTIALS = credentials('docker-credentials')
         DOCKER_REGISTRY = 'docker.io'
@@ -68,26 +68,24 @@ pipeline {
             }
         }
         
-        stage('Publish to Artifactory') {
-            //when {
-            //     expression { env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' }
-            //  }
-            steps {
-                script {
-                    def server = Artifactory.server 'artifactory-server'
-                    def buildInfo = Artifactory.newBuildInfo()
-                    buildInfo.env.capture = true
-                    
-                    def rtMaven = Artifactory.newMavenBuild()
-                    rtMaven.tool = 'Maven'
-                    rtMaven.deployer releaseRepo: 'libs-release-local', snapshotRepo: 'libs-snapshot-local', server: server
-                    rtMaven.deployer.deployArtifacts = true
-                    
-                    rtMaven.run pom: 'pom.xml', goals: 'install', buildInfo: buildInfo
-                    server.publishBuildInfo buildInfo
-                }
-            }
-        }
+        // stage('Publish to Artifactory') {
+        //     //when {
+        //     //     expression { env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' }
+        //     //  }
+        //     steps {
+        //         script {
+        //             def server = Artifactory.server 'artifactory-server'
+        //             def buildInfo = Artifactory.newBuildInfo()
+        //             buildInfo.env.capture = true
+        //             def rtMaven = Artifactory.newMavenBuild()
+        //             rtMaven.tool = 'Maven'
+        //             rtMaven.deployer releaseRepo: 'libs-release-local', snapshotRepo: 'libs-snapshot-local', server: server
+        //             rtMaven.deployer.deployArtifacts = true
+        //             rtMaven.run pom: 'pom.xml', goals: 'install', buildInfo: buildInfo
+        //             server.publishBuildInfo buildInfo
+        //         }
+        //     }
+        // }
         
         stage('Build Docker Image') {
             // when {

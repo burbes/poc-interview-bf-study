@@ -54,9 +54,46 @@ services:
     networks:
       - task-management-network
 
+  # JFrog Artifactory OSS service
+  artifactory:
+    image: releases-docker.jfrog.io/jfrog/artifactory-oss:latest
+    container_name: task-management-artifactory
+    restart: always
+    ports:
+      - "8083:8081"  # Artifactory web UI and API
+    environment:
+      - EXTRA_JAVA_OPTIONS=-Xms512m -Xmx2g
+      - ARTIFACTORY_USER=admin
+      - ARTIFACTORY_PASSWORD=password
+    volumes:
+      - artifactory_data:/var/opt/jfrog/artifactory
+      - ./artifactory/config/system.yaml:/opt/jfrog/artifactory/var/etc/system.yaml
+    networks:
+      - task-management-network
+
+  artifactory-postgres:
+    image: postgres:15
+    container_name: artifactory-postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=artifactory
+      - POSTGRES_USER=artifactory
+      - POSTGRES_PASSWORD=artifactory
+    volumes:
+      - artifactory_postgres_data:/var/lib/postgresql/data
+    networks:
+      - task-management-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U artifactory"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   mysql-data:
   app-logs:
+  artifactory_data:
+  artifactory_postgres_data:
 
 networks:
   task-management-network:

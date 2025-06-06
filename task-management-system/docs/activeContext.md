@@ -28,4 +28,10 @@
 - **Rationale:** Secure, stateless authentication for APIs.
 - **Benefits:** Scalability, security.
 - **Risks:** Token leakage, expiration handling.
-- **Alternatives:** Session-based auth (less scalable). 
+- **Alternatives:** Session-based auth (less scalable).
+
+## ADR 5: Adoption of JFrog Artifactory for Artifact Management
+- **Rationale:** Centralized, secure, and scalable storage for build artifacts (JARs, Docker images) with robust integration for Jenkins and CI/CD pipelines.
+- **Benefits:** Reliable artifact versioning, access control, integration with Jenkins, support for multiple repository types (Maven, Docker, etc).
+- **Risks:** Additional infrastructure to maintain, credential management complexity.
+- **Alternatives:** DockerHub (less control, public by default), Nexus (viable, but JFrog preferred for enterprise features). 
