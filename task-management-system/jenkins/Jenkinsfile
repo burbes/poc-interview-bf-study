@@ -191,17 +191,15 @@ pipeline {
             // }
             steps {
                 script {
-                    // Ensure branch name is not null - use 'dev' as default
                     def branchName = env.BRANCH_NAME != null ? env.BRANCH_NAME : 'dev'
-                    // Make sure GIT_COMMIT is available, use 'latest' if not
                     def gitCommit = env.GIT_COMMIT != null ? env.GIT_COMMIT.substring(0,7) : 'latest'
                     def imageTag = "${branchName}-${env.BUILD_NUMBER}-${gitCommit}"
-                    
+
                     echo "Building Docker image with tag: ${imageTag}"
-                    
+
                     env.IMAGE_TAG = imageTag
-                    env.FULL_IMAGE_NAME = "${env.DOCKER_USERNAME}/${env.DOCKER_REPO}"
-                    
+                    env.FULL_IMAGE_NAME = "${env.DOCKER_CREDENTIALS_USR}/${env.DOCKER_REPO}"
+
                     // Add error handling for Docker build
                     try {
                         sh "docker build -t ${env.FULL_IMAGE_NAME}:${imageTag} -f task-management-system/docker/Dockerfile task-management-system"
