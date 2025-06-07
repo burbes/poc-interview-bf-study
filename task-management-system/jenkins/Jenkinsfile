@@ -225,107 +225,23 @@ pipeline {
         }
         
         stage('Push Docker Image') {
-            // when {
-            //     expression { env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' }
-            // }
             steps {
-                script {
-                    // Create a directory for Docker configuration
-                    def dockerConfig = "${env.WORKSPACE}/.docker"
-                    
-                    // Create a Docker config without keychain integration
-                    sh "mkdir -p ${dockerConfig}"
-                    sh "echo '{\"auths\":{}, \"credsStore\": \"\", \"credHelpers\": {}}' > ${dockerConfig}/config.json"
-                    
-                    // Validate image tag before proceeding
-                    if (env.IMAGE_TAG == null || env.IMAGE_TAG.trim() == '') {
-                        error "IMAGE_TAG is not defined or empty. Cannot push Docker image."
-                    }
-                    
-                    echo "Preparing to push Docker image: ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
-                    
-                    // Configure Docker authentication using direct login
-                    try {
-                        // Ensure the Docker config directory exists with a clean config
+                withCredentials([usernamePassword(credentialsId: 'docker-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                    script {
+                        // Always use a custom Docker config directory for CI to avoid keychain prompts
+                        def dockerConfig = "${env.WORKSPACE}/.docker"
                         sh '''
-                            mkdir -p ${DOCKER_CONFIG}
-                            echo '{"auths":{}, "credsStore": "", "credHelpers": {}}' > ${DOCKER_CONFIG}/config.json
-                            chmod 600 ${DOCKER_CONFIG}/config.json
+                            mkdir -p $DOCKER_CONFIG
+                            echo '{"auths":{}, "credsStore": "", "credHelpers": {}}' > $DOCKER_CONFIG/config.json
+                            echo "$DOCKER_PASSWORD" | docker --config $DOCKER_CONFIG login -u $DOCKER_USERNAME --password-stdin $DOCKER_REGISTRY
                         '''
-                        
-                        // Login to Docker Hub using credentials
-                        withCredentials([usernamePassword(credentialsId: 'docker-credentials', 
-                                         passwordVariable: 'DOCKER_PASSWORD', 
-                                         usernameVariable: 'DOCKER_USERNAME')]) {
-                            sh '''
-                                set +x  # Don't echo credentials
-                                echo "🔐 Logging in to Docker Hub..."
-                                echo "$DOCKER_PASSWORD" | docker --config ${DOCKER_CONFIG} login -u $DOCKER_USERNAME --password-stdin $DOCKER_REGISTRY
-                                LOGIN_STATUS=$?
-                                set -x  # Turn echo back on
-                                
-                                if [ $LOGIN_STATUS -ne 0 ]; then
-                                    echo "❌ Docker login failed"
-                                    exit 1
-                                fi
-                                
-                                echo "✅ Successfully logged in to Docker Hub"
-                                
-                                # Verify auth is in config.json (without showing content)
-                                if grep -q "auth" ${DOCKER_CONFIG}/config.json; then
-                                    echo "✅ Docker credentials stored properly"
-                                else
-                                    echo "⚠️ Warning: Docker credentials may not be stored correctly"
-                                fi
-                            '''
-                        }
-                    } catch (Exception e) {
-                        echo "❌ Error during Docker authentication: ${e.message}"
-                        error "Failed to authenticate with Docker Hub: ${e.message}"
-                    }
-                    try {
-                        // Verify Docker is properly authenticated before pushing
-                        sh '''
-                            echo "🔍 Verifying Docker authentication status..."
-                            if ! docker --config ${DOCKER_CONFIG} info > /dev/null 2>&1; then
-                                echo "⚠️ Warning: Docker may not be properly configured"
-                            fi
-                        '''
-                        
-                        // Push the image using the authenticated config
-                        sh '''
-                            echo "📤 Pushing Docker image: ${FULL_IMAGE_NAME}:${IMAGE_TAG}..."
-                            docker --config ${DOCKER_CONFIG} push ${FULL_IMAGE_NAME}:${IMAGE_TAG}
-                        '''
-                        echo "✅ Successfully pushed ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
-                        
-                        // If it's main branch, also tag as latest
-                        def branchName = env.BRANCH_NAME != null ? env.BRANCH_NAME : 'dev'
-                        if (branchName == 'main') {
-                            sh '''
-                                echo "🏷️ Tagging image as latest..."
-                                docker --config ${DOCKER_CONFIG} tag ${FULL_IMAGE_NAME}:${IMAGE_TAG} ${FULL_IMAGE_NAME}:latest
-                                echo "📤 Pushing latest tag..."
-                                docker --config ${DOCKER_CONFIG} push ${FULL_IMAGE_NAME}:latest
-                            '''
-                            echo "✅ Successfully pushed ${env.FULL_IMAGE_NAME}:latest"
-                        }
-                    } catch (Exception e) {
-                        echo "❌ Error during Docker push: ${e.message}"
-                        sh 'docker --config ${DOCKER_CONFIG} info || true'  // Debug information
-                        error "Failed to push Docker image: ${e.message}"
-                    } finally {
-                        // Clean up Docker config securely
-                        sh '''
-                            echo "🧹 Cleaning up Docker authentication..."
-                            docker --config ${DOCKER_CONFIG} logout ${DOCKER_REGISTRY} || true
-                            # Securely remove auth information
-                            if [ -f "${DOCKER_CONFIG}/config.json" ]; then
-                                echo '{"auths":{}, "credsStore": "", "credHelpers": {}}' > ${DOCKER_CONFIG}/config.json
-                                chmod 600 ${DOCKER_CONFIG}/config.json
-                            fi
-                        '''
-                        echo "🔒 Docker credentials cleaned up securely"
+                        // Build and push using the custom config
+                        sh """
+                            docker --config $DOCKER_CONFIG build -t $FULL_IMAGE_NAME:$IMAGE_TAG -f task-management-system/docker/Dockerfile task-management-system
+                            docker --config $DOCKER_CONFIG push $FULL_IMAGE_NAME:$IMAGE_TAG
+                        """
+                        // Optionally logout (using the same config)
+                        sh 'docker --config $DOCKER_CONFIG logout $DOCKER_REGISTRY || true'
                     }
                 }
             }
