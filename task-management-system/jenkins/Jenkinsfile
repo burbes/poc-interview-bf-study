@@ -160,15 +160,16 @@ pipeline {
                         withCredentials([usernamePassword(credentialsId: 'docker-credentials', 
                                          passwordVariable: 'DOCKER_PASSWORD', 
                                          usernameVariable: 'DOCKER_USERNAME')]) {
-                            sh """
+                            sh '''
                                 echo "🔍 Testing Docker authentication..."
-                                if docker --config=${dockerConfig} login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD} ${DOCKER_REGISTRY}; then
+                                echo "$DOCKER_PASSWORD" | docker --config=${dockerConfig} login -u $DOCKER_USERNAME --password-stdin $DOCKER_REGISTRY
+                                if [ $? -eq 0 ]; then
                                     echo "✅ Docker authentication successful"
                                 else
                                     echo "⚠️ Warning: Docker authentication failed"
                                     echo "Check credentials and Docker Hub account status"
                                 fi
-                            """
+                            '''
                         }
                     } catch (Exception e) {
                         echo "❌ Error during Docker verification: ${e.message}"
@@ -235,7 +236,7 @@ pipeline {
                     
                     // Use DOCKER_PASSWORD env var for docker login
                     if (env.DOCKER_PASSWORD && env.DOCKER_USERNAME) {
-                        sh "docker --config ${dockerConfig} login -u $DOCKER_CREDENTIALS_USR -p $DOCKER_CREDENTIALS_PSW $DOCKER_REGISTRY"
+                        sh 'echo $DOCKER_CREDENTIALS_PSW | docker --config $DOCKER_CONFIG login -u $DOCKER_CREDENTIALS_USR --password-stdin $DOCKER_REGISTRY'
                     }
                     try {
                         sh "docker --config ${dockerConfig} push ${env.FULL_IMAGE_NAME}:${env.IMAGE_TAG}"
